@@ -24,7 +24,7 @@ flows:
   - {id: f05, source: scorer, target: case_db, data: [flag, explanation], protocol: tls, authenticated: true}
   - {id: f06, source: scorer, target: audit_log, data: [decision_record], protocol: tls, authenticated: true}
   - {id: f07, source: analyst, target: analyst_console, data: [case_decision], protocol: https, authenticated: true}
-  - {id: f08, source: analyst_console, target: case_db, data: [case_decision, customer_pii], protocol: postgres, authenticated: true}
+  - {id: f08, source: analyst_console, target: case_db, data: [case_decision, customer_pii], protocol: tls, authenticated: true}
 threats:
   - id: T1
     target: f01
@@ -83,3 +83,145 @@ threats:
   - {id: T24, target: scorer, category: R, title: Scorer cannot show which model version produced a past flag, likelihood: 3, impact: 4, status: open}
   - {id: T25, target: scorer, category: D, title: Crafted transfer graph with huge fan-out makes scoring take seconds, likelihood: 2, impact: 4, status: open}
   - {id: T26, target: case_db, category: D, title: Case database fills its disk during a scam wave and stops accepting flags, likelihood: 2, impact: 4, status: open}
+  - id: T27
+    target: wallet_app
+    category: T
+    title: Tampering with the official wallet app update package
+    likelihood: 2
+    impact: 5
+    status: open
+  - id: T28
+    target: payment_switch
+    category: T
+    title: Injected transfer events altered on the rails network
+    likelihood: 1
+    impact: 5
+    status: mitigated
+    mitigation: Mutual TLS with pinned certificates
+  - id: T29
+    target: f02
+    category: R
+    title: Switch denies sending a specific late transfer event
+    likelihood: 2
+    impact: 2
+    status: accepted
+    justification: Scheme rules and switch delivery logs protect us
+  - id: T30
+    target: analyst
+    category: S
+    title: Attacker impersonates an analyst on the office network
+    likelihood: 3
+    impact: 4
+    status: open
+  - id: T31
+    target: analyst
+    category: R
+    title: Analyst denies unfreezing a mule account manually
+    likelihood: 3
+    impact: 3
+    status: open
+  - id: T32
+    target: analyst_console
+    category: S
+    title: Rogue process on the console spoofs analyst actions
+    likelihood: 2
+    impact: 4
+    status: open
+  - id: T33
+    target: analyst_console
+    category: T
+    title: Case details modified by malware on the analyst machine
+    likelihood: 2
+    impact: 4
+    status: open
+  - id: T34
+    target: analyst_console
+    category: R
+    title: Console fails to log who authorized a case decision
+    likelihood: 3
+    impact: 3
+    status: open
+  - id: T35
+    target: analyst_console
+    category: I
+    title: PII exposed on the console screen to shoulder surfers
+    likelihood: 3
+    impact: 4
+    status: open
+  - id: T36
+    target: analyst_console
+    category: D
+    title: Console locked out by repeated failed login attempts
+    likelihood: 2
+    impact: 3
+    status: open
+  - id: T37
+    target: analyst_console
+    category: E
+    title: Analyst console allows arbitrary database commands
+    likelihood: 1
+    impact: 5
+    status: open
+  - id: T38
+    target: feature_store
+    category: I
+    title: Feature data leaked exposing customer spending patterns
+    likelihood: 3
+    impact: 4
+    status: open
+  - id: T39
+    target: case_db
+    category: T
+    title: Case database tampered to hide mule account activity
+    likelihood: 2
+    impact: 5
+    status: open
+  - id: T40
+    target: audit_log
+    category: T
+    title: Audit log entries altered to cover an attacker's tracks
+    likelihood: 2
+    impact: 5
+    status: open
+  - id: T41
+    target: audit_log
+    category: I
+    title: Audit log read to reveal internal scoring thresholds
+    likelihood: 2
+    impact: 4
+    status: open
+  - id: T42
+    target: audit_log
+    category: D
+    title: Audit log storage filled causing loss of decision evidence
+    likelihood: 2
+    impact: 4
+    status: open
+  - id: T43
+    target: audit_log
+    category: R
+    title: Audit log deletion allows denial of past scoring actions
+    likelihood: 2
+    impact: 4
+    status: open
+  - id: T44
+    target: f08
+    category: T
+    title: Case decision tampered on the way to the database
+    likelihood: 2
+    impact: 4
+    status: open
+  - id: T45
+    target: f08
+    category: I
+    title: PII leaked on the link from the analyst console
+    likelihood: 2
+    impact: 5
+    status: open
+  - id: T46
+    target: f08
+    category: D
+    title: Database connection dropped stopping analyst decisions
+    likelihood: 2
+    impact: 3
+    status: open
