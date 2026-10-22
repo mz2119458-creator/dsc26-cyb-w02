@@ -85,14 +85,14 @@ threats:
   - {id: T26, target: case_db, category: D, title: Case database fills its disk during a scam wave and stops accepting flags, likelihood: 2, impact: 4, status: open}
   - id: T27
     target: wallet_app
-    category: T
+    category: S
     title: Tampering with the official wallet app update package
     likelihood: 2
     impact: 5
     status: open
   - id: T28
     target: payment_switch
-    category: T
+    category: S
     title: Injected transfer events altered on the rails network
     likelihood: 1
     impact: 5
@@ -100,7 +100,7 @@ threats:
     mitigation: Mutual TLS with pinned certificates
   - id: T29
     target: f02
-    category: R
+    category: I
     title: Switch denies sending a specific late transfer event
     likelihood: 2
     impact: 2
