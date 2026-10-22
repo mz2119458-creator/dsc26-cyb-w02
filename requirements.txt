@@ -1,0 +1,5 @@
+pytest==9.1.1
+pytest-timeout==2.4.0
+hypothesis==6.168.3
+pyyaml==6.0.3
+tzdata==2026.4

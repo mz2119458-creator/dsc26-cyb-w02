@@ -1,0 +1,85 @@
+# Rawaj Pay: transfer scoring service and analyst console (Sprint 0 draft)
+system: Rawaj Pay mule-account scoring
+zones:
+  - {id: internet, trust: 0}
+  - {id: rails, trust: 1}        # national instant-payment switch
+  - {id: dmz, trust: 1}
+  - {id: core, trust: 3}
+  - {id: office, trust: 2}       # analysts' laptops on the office network
+elements:
+  - {id: wallet_app, kind: external_entity, zone: internet}
+  - {id: payment_switch, kind: external_entity, zone: rails}
+  - {id: analyst, kind: external_entity, zone: office}
+  - {id: api_gateway, kind: process, zone: dmz}
+  - {id: scorer, kind: process, zone: core}
+  - {id: analyst_console, kind: process, zone: office}
+  - {id: feature_store, kind: data_store, zone: core, holds_pii: true}
+  - {id: case_db, kind: data_store, zone: core, holds_pii: true}
+  - {id: audit_log, kind: data_store, zone: core, is_log: true}
+flows:
+  - {id: f01, source: wallet_app, target: api_gateway, data: [transfer_request], protocol: https, authenticated: true}
+  - {id: f02, source: payment_switch, target: api_gateway, data: [transfer_event], protocol: mtls, authenticated: true}
+  - {id: f03, source: api_gateway, target: scorer, data: [transfer_event], protocol: mtls, authenticated: true}
+  - {id: f04, source: scorer, target: feature_store, data: [account_features], protocol: tls, authenticated: true}
+  - {id: f05, source: scorer, target: case_db, data: [flag, explanation], protocol: tls, authenticated: true}
+  - {id: f06, source: scorer, target: audit_log, data: [decision_record], protocol: tls, authenticated: true}
+  - {id: f07, source: analyst, target: analyst_console, data: [case_decision], protocol: https, authenticated: true}
+  - {id: f08, source: analyst_console, target: case_db, data: [case_decision, customer_pii], protocol: postgres, authenticated: true}
+threats:
+  - id: T1
+    target: f01
+    category: T
+    title: Transfer amount or beneficiary altered between the wallet app and the gateway
+    likelihood: 2
+    impact: 5
+    status: mitigated
+    mitigation: TLS 1.2+ with HSTS; request body signed by the app session key
+  - id: T2
+    target: api_gateway
+    category: S
+    title: Attacker replays a stolen wallet session token to submit transfers
+    likelihood: 4
+    impact: 4
+    status: open
+  - id: T3
+    target: api_gateway
+    category: D
+    title: Burst of scoring requests during a scam campaign exhausts gateway workers
+    likelihood: 3
+    impact: 4
+    status: open
+  - id: T4
+    target: scorer
+    category: I
+    title: Scorer explanations reveal the exact rule thresholds to the customer
+    likelihood: 3
+    impact: 5
+    status: open
+  - id: T5
+    target: case_db
+    category: I
+    title: Analyst exports customer PII from the case database to a personal laptop
+    likelihood: 3
+    impact: 4
+    status: open
+  - {id: T6, target: wallet_app, category: S, title: Scammer installs a cloned wallet app that harvests customer credentials, likelihood: 3, impact: 4, status: open}
+  - {id: T7, target: wallet_app, category: R, title: Customer denies authorising a transfer that the scam script talked them into, likelihood: 4, impact: 3, status: mitigated, mitigation: Device binding plus signed transfer confirmation stored with the decision record}
+  - {id: T8, target: payment_switch, category: S, title: A host on the rails network impersonates the payment switch and injects fake events, likelihood: 1, impact: 5, status: mitigated, mitigation: Mutual TLS with the switch certificate pinned at the gateway}
+  - {id: T9, target: payment_switch, category: R, title: Switch disputes that it delivered a transfer event Rawaj scored late, likelihood: 2, impact: 2, status: accepted, justification: Switch keeps its own signed delivery log under the scheme rules}
+  - {id: T10, target: f01, category: I, title: Transfer request contents read on a hostile cafe Wi-Fi, likelihood: 2, impact: 3, status: mitigated, mitigation: TLS 1.2+ only and certificate pinning in the wallet app}
+  - {id: T11, target: f01, category: D, title: Customer traffic dropped by a DDoS on the public endpoint, likelihood: 3, impact: 3, status: open}
+  - {id: T12, target: f02, category: T, title: Transfer events modified on the link from the switch, likelihood: 1, impact: 5, status: mitigated, mitigation: Mutual TLS; events carry the switch signature and the gateway verifies it}
+  - {id: T13, target: f02, category: I, title: Transfer events captured on the rails link, likelihood: 1, impact: 4, status: mitigated, mitigation: Mutual TLS on a dedicated circuit}
+  - {id: T14, target: f02, category: D, title: Link to the switch saturated so events arrive after the money has moved, likelihood: 2, impact: 4, status: open}
+  - {id: T15, target: api_gateway, category: T, title: Request fields altered by a compromised gateway plugin before scoring, likelihood: 2, impact: 4, status: open}
+  - {id: T16, target: api_gateway, category: R, title: Gateway keeps no record of which client sent which request, likelihood: 3, impact: 3, status: open}
+  - {id: T17, target: api_gateway, category: I, title: Verbose gateway errors leak internal hostnames and stack traces, likelihood: 3, impact: 2, status: open}
+  - {id: T18, target: api_gateway, category: E, title: Path traversal in gateway routing reaches internal admin endpoints, likelihood: 2, impact: 5, status: open}
+  - {id: T19, target: f03, category: T, title: Events altered between the gateway and the scorer, likelihood: 1, impact: 5, status: mitigated, mitigation: Mutual TLS between gateway and scorer with service identities}
+  - {id: T20, target: f03, category: I, title: Events sniffed between the DMZ and the core network, likelihood: 1, impact: 4, status: mitigated, mitigation: Mutual TLS between gateway and scorer}
+  - {id: T21, target: f03, category: D, title: Gateway floods the scorer with retries and pushes p95 past 300 ms, likelihood: 3, impact: 4, status: open}
+  - {id: T22, target: scorer, category: S, title: A rogue internal service calls the scorer pretending to be the gateway, likelihood: 2, impact: 4, status: open}
+  - {id: T23, target: scorer, category: T, title: Model file swapped on disk for one that never flags mule accounts, likelihood: 1, impact: 5, status: open}
+  - {id: T24, target: scorer, category: R, title: Scorer cannot show which model version produced a past flag, likelihood: 3, impact: 4, status: open}
+  - {id: T25, target: scorer, category: D, title: Crafted transfer graph with huge fan-out makes scoring take seconds, likelihood: 2, impact: 4, status: open}
+  - {id: T26, target: case_db, category: D, title: Case database fills its disk during a scam wave and stops accepting flags, likelihood: 2, impact: 4, status: open}
